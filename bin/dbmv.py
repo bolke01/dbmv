@@ -376,14 +376,14 @@ ms2vw = {
          "CHAR"             : ("CHAR(<PRECISION>)"           , "<COLNAME>", "'<VALUE>'"),
          "NVARCHAR"         : ("NVARCHAR(<PRECISION>)"       , "<COLNAME>", "'<VALUE>'"), 
          "VARCHAR"          : ("VARCHAR(<PRECISION>)"        , "<COLNAME>", "'<VALUE>'"),
-         "TEXT"             : ("LONG VARCHAR"                , "CAST(<COLNAME> AS VARCHAR(max))", "'<VALUE>'"), # MS: 2^31 Chars
-         "NTEXT"            : ("LONG NVARCHAR"               , "CAST(<COLNAME> AS NVARCHAR(max))", "'<VALUE>'"), # MS: 2^31/2 UTF8 Chars
+         "TEXT"             : ("VARCHAR(8192)"                , "CAST(<COLNAME> AS VARCHAR(max))", "'<VALUE>'"), # MS: 2^31 Chars
+         "NTEXT"            : ("NVARCHAR(8192)"               , "CAST(<COLNAME> AS NVARCHAR(max))", "'<VALUE>'"), # MS: 2^31/2 UTF8 Chars
          "UNIQUEIDENTIFIER" : ("VARCHAR(64)"                 , "<COLNAME>", "'<VALUE>'"),
          "BINARY"           : ("BINARY(<PRECISION>)"         , "CAST(<COLNAME> AS NVARCHAR(max))", "'<VALUE>'"  ), # MS: [1:8000] (Fixed size)
          "VARBINARY"        : ("VARBINARY(<PRECISION>)"      , "CASE WHEN <COLNAME> IS NOT NULL THEN '--IMAGE--' END", "'<VALUE>'"  ), # MS: [1:8000] (Var size)
          "IMAGE"            : ("LONG BYTE"                   , "<COLNAME>", "<VALUE>"  ), # MS: 2^31 bytes
          "BIT"              : ("TINYINT"                     , "CAST(<COLNAME> AS TINYINT)", "<VALUE>"  ), # SQL:0/1; 
-         "XML"              : ("LONG NVARCHAR"               , "CAST(<COLNAME> AS NVARCHAR(max))", "'<VALUE>'") # MSSQL : 2 GB
+         "XML"              : ("NVARCHAR(8192)"               , "CAST(<COLNAME> AS NVARCHAR(max))", "'<VALUE>'") # MSSQL : 2 GB
 }
 
 
@@ -728,7 +728,7 @@ g_trmxty  = { "mssql"     : {"mysql"     : ms2my,
               "postgres"  : {"vectorwise": pg2vw
                             },
               "teradata"  : {"vectorwise": td2vw
-                            } 
+                            }
             }           
 
 
@@ -854,7 +854,6 @@ def generateTb():
 
    cur = g_srcdb.execute(sql)
    for line in cur:
-
       row = strip_row(line)
 
       if (row[0],row[1]) != (scname, tbname):
@@ -1442,12 +1441,14 @@ if p_creall:
 
 if p_loaddl and p_creall:
    for s in uks: 
+      print s
       try:                 g_destdb.execute(s)
       except Exception, e: print "Exception : ", e
    for s in ixs: 
       try:                 g_destdb.execute(s)
       except Exception, e: print "Exception : ", e
    for s in fks: 
+      print s
       try:                 g_destdb.execute(s)
       except Exception, e: print "Exception : ", e
 

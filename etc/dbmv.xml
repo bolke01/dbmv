@@ -333,7 +333,7 @@
       SELECT s.name as scname, o.name as tbname, c.name as clname, t.name as  tyname, 
              c.prec as precision, c.scale, 
              CASE  WHEN c.isnullable = 0 THEN 'NOT NULL'   END as isnull, 
-             CASE  WHEN c.cdefault  != 0 THEN  (SELECT text FROM syscomments WHERE id = c.cdefault)  END as dfval
+             CASE  WHEN c.cdefault  != 0 THEN  (SELECT REPLACE(REPLACE(text, '(', ''),')', '') FROM syscomments WHERE id = c.cdefault)  END as dfval
       FROM   sys.objects o, syscolumns c, systypes t, sys.schemas s
       WHERE  o.object_id    = c.id
       AND    o.schema_id = s.schema_id

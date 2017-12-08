@@ -128,7 +128,6 @@ def getXMLdata(p_key1, p_key2=None, p_key3=None):
    xmldoc = xml.dom.minidom.parse( XMLINI )
 
    if (p_key2, p_key3) == (None, None):
-
       node = xmldoc.getElementsByTagName(p_key1)[0]
       rc   = node.childNodes[0].data
 
@@ -162,9 +161,13 @@ class dbconnector:
       (self.dbtype, driver, hostname, port, dbname, user, pwd) = getDbStringDetails(db)
   
       if (self.dbtype in ["teradata", "maxdb"]) or (driver == "-odbc"):
-       dsn        = self.odbc(hostname, port, dbname)
-       print dsn
-       self.db    = pyodbc.connect(dsn=dsn, user=user, password=pwd, ansi=True, autocommit=True)
+       if(self.dbtype == "mssql"):
+        driverValue = "{ODBC Driver 13 for SQL Server}" # Azure DB connection
+        self.db    = pyodbc.connect(host=hostname, port=port, database=dbname, user=user, password=pwd, driver=driverValue)
+       else:
+         dsn        = self.odbc(hostname, port, dbname)
+         print dsn
+         self.db    = pyodbc.connect(dsn=dsn, user=user, password=pwd, ansi=True, autocommit=True)
        self.cursor=self.db.cursor()
 
       elif self.dbtype == "ase": 
@@ -221,9 +224,8 @@ class dbconnector:
          self.cursor=self.db.cursor()
 
       elif self.dbtype in ["ingres", "vectorwise"]:
-         # vnode = @host,protocol,port[;attribute=value{;attribute=value}][[user,password]]
-         s = "@%s,tcp_ip,%s;connection_type=direct" % (hostname, port)
-         self.db=ingresdbi.connect(database=dbname, vnode=s, uid=user, pwd=pwd, dbms_pwd=pwd, autocommit = "Y")   # trace = (7, "dbi.log")
+         connString = "DRIVER={Ingres};SERVER=@%s,tcp_ip,%s;DATABASE=%s;SERVERTYPE=INGRES;UID=%s;PWD=%s;" % (hostname, port, dbname, user, pwd)
+         self.db    = pyodbc.connect(connString)
          self.cursor=self.db.cursor()
 
       else:
@@ -279,7 +281,7 @@ class dbconnector:
        Create an odbc datasource and return dsn
    '''
    def odbc(self, p_hostname, p_port, p_dbname):
-   
+
       if os.name == "nt": 
          dsn = p_hostname
      
