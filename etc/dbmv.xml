@@ -343,6 +343,20 @@
       AND    t.name NOT IN ('sysname', 'SQL_VARIANT', 'IMAGE', 'BITEA')
       ORDER BY s.name, o.name, c.colid
     </select>
+    <select id="viwDefinition">
+      SELECT DISTINCT u.view_schema scname, u.view_name viwname, s.view_definition viwdef, s.check_option viwchk , s.is_updatable viwupd
+      FROM (SELECT DB_NAME() AS TABLE_CATALOG, SCHEMA_NAME(schema_id)	AS TABLE_SCHEMA, name AS TABLE_NAME,
+		OBJECT_DEFINITION(object_id) 
+	 AS VIEW_DEFINITION,
+	convert(varchar(7), CASE with_check_option
+		WHEN 1 THEN    'CASCADE'
+		ELSE 'NONE' END) AS CHECK_OPTION, 'NO' AS IS_UPDATABLE FROM sys.views WHERE OBJECT_DEFINITION(object_id) NOT LIKE '%.value%;%' ) s, 
+          [INFORMATION_SCHEMA].[VIEW_TABLE_USAGE] u
+      WHERE s.table_name = u.view_name
+      AND s.table_schema = u.view_schema
+      AND u.table_schema = u.view_schema
+      ORDER BY 1,2,3
+    </select>
     <select id="fkDefinition">
       SELECT s1.name as scname, o1.name as tbname, o2.name as csname, c1.name as clname, 
              s2.name rscname, o3.name as rtbname, c2.name as rclname
@@ -718,13 +732,26 @@
   
    <vectorwise>
       <create id="sch">
-         COMMIT;
-         SET SESSION AUTHORIZATION ${scname}
+         SET SESSION AUTHORIZATION ${scname};
+      </create>
+      <create id="pre">
+         SET SESSION AUTHORIZATION ${scname};
+         SET INSERTMODE ROW
       </create>
       <create id="tb">
          CREATE TABLE ${scname}.${tbname} (
             ${clname}	${tyname}	${isnull} 	${dfval}
          )
+       </create>
+      <create id="drop">
+         DROP TABLE IF EXISTS ${scname}.${tbname}; 
+      </create>
+       <create id="viw">
+         DROP VIEW IF EXISTS ${scname}.${tbname};
+       </create>
+       <create id="seq">
+         CREATE SEQUENCE ${scname}.${seqname} `
+            ${clname} AS ${tyname} START WITH ${initv} INCREMENT BY  ${incv} MAXVALUE ${maxv} MINVALUE ${minv} ${seqtype} ${cachetype}  ${cycletype}  ${ordtype}         
        </create>
       <create id="uk">
          ALTER TABLE ${scname}.${tbname} ADD CONSTRAINT ${csname}  ${cstype} ( ${clname} )
@@ -738,7 +765,89 @@
       <load id="cmd">
          vwload --table "${scname}.${tbname}" --fdelim "${fdelim}" --quote "'" ${dbname} ${fname}
       </load>
+      <load id="cpvwl">
+         COPY "${tbname}" VWLOAD FROM '${fname}' WITH ${attrib} ${attribsep} fdelim='${fdelim}', quote='"' , WORK_DIR='${wdname}'
+      </load>
    </vectorwise>
+   <vector>
+      <create id="sch">
+         SET SESSION AUTHORIZATION ${scname};
+      </create>
+      <create id="pre">
+         SET SESSION AUTHORIZATION ${scname};
+         SET INSERTMODE ROW;
+      </create>
+      <create id="tb">
+         CREATE TABLE ${scname}.${tbname} (
+            ${clname}	${tyname}	${isnull} 	${dfval}
+         ) WITH STRUCTURE = X100, NOPARTITION;
+       </create>
+       <create id="drop">
+         DROP TABLE IF EXISTS ${scname}.${tbname};
+       </create>
+       <create id="viw">
+         DROP VIEW IF EXISTS ${scname}.${tbname};
+       </create>
+       <create id="seq">
+         CREATE SEQUENCE ${scname}.${seqname} `
+            ${clname} AS ${tyname} START WITH ${initv} INCREMENT BY  ${incv} MAXVALUE ${maxv} MINVALUE ${minv} ${seqtype} ${cachetype}  ${cycletype}  ${ordtype}         
+       </create>
+      <create id="uk">
+         ALTER TABLE ${scname}.${tbname} ADD CONSTRAINT ${csname}  ${cstype} ( ${clname} )
+      </create>
+      <create id="fk">
+         ALTER TABLE ${scname}.${tbname} ADD CONSTRAINT ${csname}	FOREIGN KEY ( ${clname} )
+         REFERENCES ${rscname}.${rtbname} ( ${rclname} )
+      </create>
+      <create id="ix">
+      </create>
+      <load id="cmd">
+         vwload --table "${scname}.${tbname}" --fdelim "${fdelim}" --quote "'" ${dbname} ${fname}
+      </load>
+      <load id="cpvwl">
+         COPY "${tbname}" VWLOAD FROM '${fname}' WITH ${attrib} ${attribsep} fdelim='${fdelim}', quote='"' , WORK_DIR='${wdname}'
+      </load>
+   </vector>
+   <vectorh>
+      <create id="sch">
+         SET SESSION AUTHORIZATION ${scname};
+      </create>
+      <create id="pre">
+         SET SESSION AUTHORIZATION ${scname};
+         SET INSERTMODE ROW;
+         DROP TABLE IF EXISTS ${scname}.${tbname}; 
+      </create>
+      <create id="drop">
+         DROP TABLE IF EXISTS ${scname}.${tbname}; 
+      </create>
+      <create id="tb">
+         CREATE TABLE ${scname}.${tbname} (
+            ${clname}	${tyname}	${isnull} 	${dfval}
+         ) WITH STRUCTURE = X100, PARTITION=(HASH ON ${clname} 5 PARTITIONS);
+       </create>
+       <create id="viw">
+         DROP VIEW IF EXISTS ${scname}.${tbname}; 
+       </create>
+       <create id="seq">
+         CREATE SEQUENCE ${scname}.${seqname} `
+            ${clname} AS ${tyname} START WITH ${initv} INCREMENT BY  ${incv} MAXVALUE ${maxv} MINVALUE ${minv} ${seqtype} ${cachetype}  ${cycletype}  ${ordtype}         
+       </create>
+      <create id="uk">
+         ALTER TABLE ${scname}.${tbname} ADD CONSTRAINT ${csname}  ${cstype} ( ${clname} )
+      </create>
+      <create id="fk">
+         ALTER TABLE ${scname}.${tbname} ADD CONSTRAINT ${csname}	FOREIGN KEY ( ${clname} )
+         REFERENCES ${rscname}.${rtbname} ( ${rclname} )
+      </create>
+      <create id="ix">
+      </create>
+      <load id="cmd">
+         vwload --table "${scname}.${tbname}" --fdelim "${fdelim}" --quote "'" ${dbname} ${fname}
+      </load>
+      <load id="cpvwl">
+         COPY "${tbname}" VWLOAD FROM '${fname}' WITH ${attrib} ${attribsep} fdelim='${fdelim}', quote='"' , WORK_DIR='${wdname}'
+      </load>
+   </vectorh>
 
   <ingres>
     <create id="sch">
@@ -747,6 +856,16 @@
       CREATE TABLE ${tbname} (
          ${clname}	${tyname}	${isnull} 	${dfval}
       ) with nojournaling
+    </create>
+      <create id="drop">
+         DROP TABLE IF EXISTS ${scname}.${tbname}; 
+      </create>
+    <create id="viw">
+         DROP VIEW IF EXISTS ${scname}.${viwname};
+    </create>
+    <create id="seq">
+         CREATE SEQUENCE ${scname}.${seqname} `
+            ${clname} AS ${tyname} START WITH ${initv} INCREMENT BY  ${incv} MAXVALUE ${maxv} MINVALUE ${minv} ${seqtype} ${cachetype}  ${cycletype}  ${ordtype}         
     </create>
     <create id="uk">
       ALTER TABLE ${tbname} ADD CONSTRAINT ${csname}	${cstype} ( ${clname} )
@@ -761,4 +880,5 @@
   </ingres>
 
 </dbmv>
+
 

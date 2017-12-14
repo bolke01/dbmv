@@ -64,9 +64,9 @@ defdbs   = { "mysql":"mysql"  , "oracle":"sys"       , "mssql":"master",
 defports = { "mysql":"3306"   , "oracle":"1521"      , "mssql":"1433"    , 
              "teradata":"1025", "postgres":"5432"    , "greenplum":"5432",
              "db2":"446"      , "ase":"5000"         , "progress":"8104" ,
-             "maxdb":"7200"   , "ingres":"II"        , "vectorwise":"VW" ,
+             "maxdb":"7200"   , "ingres":"II"        , "vector":"VW" ,
              "asa":"2638"     , "iq":"2638"          , "hana":"00",
-             "matrix":"1439"
+             "matrix":"1439"  , "vectorh":"VW" ,
            }
 
 # Error table
@@ -223,9 +223,9 @@ class dbconnector:
          self.db    = pyodbc.connect(dsn=dsn, user=user, password=pwd, autocommit=True)
          self.cursor=self.db.cursor()
 
-      elif self.dbtype in ["ingres", "vectorwise"]:
+      elif self.dbtype in ["ingres", "vector", "vectorh"]:
          connString = "DRIVER={Ingres};SERVER=@%s,tcp_ip,%s;DATABASE=%s;SERVERTYPE=INGRES;UID=%s;PWD=%s;" % (hostname, port, dbname, user, pwd)
-         self.db    = pyodbc.connect(connString)
+         self.db    = pyodbc.connect(connString, autocommit=True)
          self.cursor=self.db.cursor()
 
       else:
@@ -247,9 +247,10 @@ class dbconnector:
                                                                    # at the beginning
          isSelect = True if pattern.search(p_sql) else False
 
-         self.cursor.execute(p_sql.encode('utf-8'))
+         encodedValue = p_sql.encode('ascii', 'replace')
+         self.cursor.execute(encodedValue)
 
-         if isSelect and self.dbtype in ["db2", "netezza", "teradata", "ingres", "vectorwise", "asa", "iq", "hana"]:
+         if isSelect and self.dbtype in ["db2", "netezza", "teradata", "ingres", "vector", "vectorh", "asa", "iq", "hana"]:
             rows = self.cursor.fetchall()
          else:
             rows = self.cursor
